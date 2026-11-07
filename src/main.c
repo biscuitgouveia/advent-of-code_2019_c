@@ -86,6 +86,9 @@ int main() {
 
         total_part_2 += part_2_seg;
     }
+
+    free(data_buf);
+    data_buf = NULL;
     
     printf("Part 2: %i\n", total_part_2);
     return 0;
