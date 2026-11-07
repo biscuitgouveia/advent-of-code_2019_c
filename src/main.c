@@ -1,20 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-
-
-int resize_array(int **arr, size_t new_size) {
-    int *temp = realloc(*arr, new_size * sizeof(int));
-    if (temp == NULL) {
-        // Handle realloc failure
-        printf("Memory allocation failed\n");
-        return -1;
-    }
-    *arr = temp;
-    return 0;
-}
-
-
+#include <ethan_utilities.h>
 
 int main() {
 
@@ -60,7 +47,7 @@ int main() {
 
         if (new_size > 1) {
             // clean everything up if resizing array fails
-            if (resize_array(&data_buf, new_size) == -1) {
+            if (resize_array(&data_buf, new_size) == STATUS_BAD) {
                 free(data_buf);
                 data_buf = NULL;
                 free(lineptr);
