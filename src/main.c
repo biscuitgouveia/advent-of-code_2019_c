@@ -1,96 +1,41 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <getopt.h>
+
 #include <ethan_utilities.h>
+#include <puzzles.h>
 
-int main() {
+int main(int argc, char *argv[]) { 
+	char *dayarg = NULL;
+	int d = 0;
+	int c;
 
-    // Create data buffer for part 2 which will automatically
-    // expand with each line read from the file
-    size_t initial_size = 1;
-    size_t new_size = 0;
+	while ((c = getopt(argc, argv, "d:")) != -1) {
+		switch (c) {
+			case 'd':
+				dayarg = optarg;
+				d = atoi(dayarg);
+				break;
+			case '?':
+				printf("Unknown option -%c\n", c);
+				break;
+			default:
+				return -1;
+		}
+	}
 
-    int *data_buf = malloc(initial_size * sizeof(int));
-    if (data_buf == NULL) {
-        printf("Memory allocation failed\n");
-        return 1;
-    }
-    // initialise buffer with garbage
-    for (size_t i = 0; i < initial_size; i++) {
-        data_buf[i] = i;
-    }
-
-    // open file stream and check for errors
-    FILE *fp = fopen("input", "r");
-
-    if (fp == NULL) {
-        perror("fopen");
-        return -1;
-    }
-
-    int total_part_1 = 0;
-    int total_part_2 = 0;
-
-    // read line by line from file stream
-    char *lineptr = NULL;
-    size_t line_buf_size = 0;
-
-    while(getline(&lineptr, &line_buf_size, fp)!= -1) {
-        // calculate each value for part 1
-        int temp_base = atoi(lineptr);
-        double temp_floor = floor(temp_base/3);
-        temp_floor -= 2;
-
-        // expand and add each individually to data_buf to handle
-        // later in part 2
-        new_size++;
-
-        if (new_size > 1) {
-            // clean everything up if resizing array fails
-            if (resize_array(&data_buf, new_size) == STATUS_BAD) {
-                free(data_buf);
-                data_buf = NULL;
-                free(lineptr);
-                lineptr = NULL;
-                fclose(fp);
-                return -1;
-            };
-        }
-
-        data_buf[new_size-1] = temp_floor;
-        total_part_1 += (int)temp_floor;
-
+    switch(d) {
+        case 1:
+            day_1();
+            break;
+        case 2:
+            day_2();
+            break;
+        default:
+            return -1;
     }
 
-    free(lineptr);
-    fclose(fp);
-
-    printf("Part 1: %i\n", total_part_1);
-
-    // iterate over all values in data_buf and calculate
-    // individual fuel need expansion
-    for (int i = 0; i < new_size; i++) {
-
-        int part_2_temp = floor(data_buf[i]/3) - 2;
-        int part_2_seg = data_buf[i] + part_2_temp;
-
-        while (part_2_temp > 0) {
-            part_2_temp = floor(part_2_temp/3) - 2;
-
-            // catch any sneaky values less than 1;
-            if (part_2_temp > 0) {
-                part_2_seg += part_2_temp;
-            }
-            
-        }
-
-        total_part_2 += part_2_seg;
-    }
-
-    free(data_buf);
-    data_buf = NULL;
-    
-    printf("Part 2: %i\n", total_part_2);
     return 0;
 
 }

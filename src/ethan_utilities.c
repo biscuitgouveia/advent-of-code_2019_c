@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-status_t resize_array(int **arr, size_t new_size) {
+status_t resize_dynamic_array(int **arr, size_t new_size) {
     int *temp = realloc(*arr, new_size * sizeof(int));
     if (temp == NULL) {
         // Handle realloc failure

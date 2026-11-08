@@ -7,6 +7,6 @@ typedef enum {
 	STATUS_BAD,
 } status_t;
 
-status_t resize_array(int **arr, size_t new_size);
+status_t resize_dynamic_array(int **arr, size_t new_size);
 
 #endif
