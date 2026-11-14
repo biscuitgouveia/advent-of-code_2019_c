@@ -77,7 +77,7 @@ status_t run_code(int **data_buf, size_t data_buf_size, int noun, int verb) {
         }
 
         if ((*data_buf)[index] == OPCODE_TERM) {
-            printf("TERMINATING @ %d!\n", index);
+            // printf("TERMINATING @ %d!\n", index);
             return STATUS_GOOD;
         }
 
