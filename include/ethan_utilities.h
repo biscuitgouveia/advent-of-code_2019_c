@@ -8,5 +8,6 @@ typedef enum {
 } status_t;
 
 status_t resize_dynamic_array(int **arr, size_t new_size);
+status_t ingest_comma_delim(int **buf, size_t *buf_size, char *filepath);
 
 #endif
