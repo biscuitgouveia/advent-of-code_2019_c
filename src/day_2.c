@@ -44,33 +44,25 @@ int day_2() {
         return -1;
     }
 
-    // Todo: Rewrite as binary search
-    for (int noun = MIN_NOUN; noun <= MAX_NOUN; noun++) {
-        for (int verb = MIN_VERB; verb <= MAX_VERB; verb++) {
-            if (run_code(&data_buf, data_buf_size, noun, verb) == STATUS_BAD) {
-                printf("Something went wrong!\n");
-                free(data_buf);
-                data_buf = NULL;
-                return -1;
-            }
-            if (data_buf[0] == PART_TWO_TARGET) {
-                printf("DONE!\n");
-                printf("Part One Answer: %i\n", part_one);
-                printf("Noun: %i\nVerb: %i\n", noun, verb);
-                printf("Part Two Answer: %i\n", 100 * noun + verb);
-                free(data_buf);
-                data_buf = NULL;
-                return 0;
-            } else {
-                if (reload_program(&data_buf, &data_buf_size, "./Day 2/input") == STATUS_BAD) {
-                    printf("Error reloading program.\n");
-                    free(data_buf);
-                    data_buf = NULL;
-                    return -1;
-                }
-            }
-        }
+    intcode_input part_two_params = {
+        0,
+        0,
+        MIN_NOUN,
+        MAX_NOUN,
+        MIN_VERB,
+        MAX_VERB,
+        PART_TWO_TARGET,
+    };
+
+    if (run_for_target(&data_buf, &data_buf_size, &part_two_params, INPUT_PATH) == STATUS_BAD) {
+        free(data_buf);
+        data_buf = NULL;
+        return -1;
     }
+
+    printf("Part One Answer: %i\n", part_one);
+    printf("Noun: %i\nVerb: %i\n", part_two_params.noun, part_two_params.verb);
+    printf("Part Two Answer: %i\n", 100 * part_two_params.noun + part_two_params.verb);
 
     free(data_buf);
     data_buf = NULL;
