@@ -63,6 +63,15 @@ status_t opcode_mult(int *buf, int *index, size_t max_size) {
     return STATUS_GOOD;
 }
 
+// Runs a full intcode program.
+//
+// params:
+//  - data_buf: Double pointer to a data buffer initialised with an intcode program.
+//  - data_buf_size: The size of the data buffer.
+//  - noun: Noun supplied for the first register of the program.
+//  - verb: Verb supplied for the second register of the program.
+//
+// returns: STATUS_GOOD on success, or STATUS_BAD on error.
 status_t run_code(int **data_buf, size_t data_buf_size, int noun, int verb) {
     int index = 0;
     int halt_sig = 0;
@@ -102,6 +111,13 @@ status_t run_code(int **data_buf, size_t data_buf_size, int noun, int verb) {
     return STATUS_BAD;
 }
 
+// Empties the data buffer.
+//
+// params:
+//  - data_buf: Double pointer to a data buffer initialised with a previous intcode program.
+//  - data_buf_size: A pointer to a variable counting the size of the buffer.
+//
+// returns: STATUS_GOOD on success, or STATUS_BAD on error.
 status_t reset_buffer(int **data_buf, size_t *data_buf_size) {
     free(*data_buf);
     *data_buf = NULL;
@@ -118,6 +134,14 @@ status_t reset_buffer(int **data_buf, size_t *data_buf_size) {
     return STATUS_GOOD;
 }
 
+// Empties the data buffer and reloads an intcode program from a file.
+//
+// params:
+//  - data_buf: Double pointer to a data buffer initialised with a previous intcode program.
+//  - data_buf_size: A pointer to a variable counting the size of the buffer.
+//  - filepath: Path to the file containing the intcode program.
+//
+// returns: STATUS_GOOD on success, or STATUS_BAD on error.
 status_t reload_program(int **data_buf, size_t *data_buf_size, char *filepath) {
     
     if (reset_buffer(data_buf, data_buf_size) == STATUS_BAD) {
@@ -153,6 +177,15 @@ int run_and_reset(int **data_buf, size_t *data_buf_size, int noun, int verb, cha
         return output;
 }
 
+// Runs an intcode program repeatedly until a target value is found, using a binary search to find the correct noun and verb.
+//
+// params:
+//  - data_buf: Double pointer to a data buffer initialised with an intcode program.
+//  - data_buf_size: A pointer to a variable counting the size of the buffer.
+//  - intcode_input: Pointer to a struct containing the target value, min and max noun and verb values, and the noun and verb values themselves.
+//  - filepath: Path to the file containing the intcode program.
+//
+// returns: STATUS_GOOD on success, or STATUS_BAD on error.
 status_t run_for_target(int **data_buf, size_t *data_buf_size, intcode_input *input, char *filepath) {
     int noun_left = input->min_noun;
     int noun_right = input->max_noun;
