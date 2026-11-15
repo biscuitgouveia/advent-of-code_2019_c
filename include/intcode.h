@@ -4,7 +4,16 @@
 
 #define OPCODE_ADD 1
 #define OPCODE_MULT 2
+#define OPCODE_INP 3
+#define OPCODE_OUTP 4
+#define OPCODE_JUMP_TRUE 5
+#define OPCODE_JUMP_FALSE 6
+#define OPCODE_LESS_THAN 7
+#define OPCODE_EQUAL 8
 #define OPCODE_TERM 99
+
+#define POS_MODE 0
+#define IMM_MODE 1
 
 typedef struct {
     int noun;
@@ -16,6 +25,14 @@ typedef struct {
     int target;
 } intcode_input;
 
+typedef struct {
+    int opcode;
+    int first_param;
+    int second_param;
+    int third_param;
+}  opcode_mode;
+
+status_t decode_param_modes(opcode_mode *opcode_param_mode, int opcode);
 status_t opcode_add(int *buf, int *index, size_t max_size);
 status_t opcode_mult(int *buf, int *index, size_t max_size);
 status_t run_code(int **data_buf, size_t data_buf_size, int noun, int verb);

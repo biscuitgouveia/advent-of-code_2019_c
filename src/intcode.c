@@ -1,65 +1,240 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <intcode.h>
+#include <logger.h>
 
-status_t opcode_add(int *buf, int *index, size_t max_size) {
-    
-    if (buf[*index] != OPCODE_ADD) {
-        printf("Incorrectly identified OPCODE_ADD!");
+status_t decode_param_modes(opcode_mode *opcode_mode, int opcode) {
+    if (opcode <= 0) {
+        printf("Invalid opcode: %i\n", opcode);
         return STATUS_BAD;
     }
+    opcode_mode->opcode = opcode % 20;
+    opcode /= 10;
+    opcode /= 10;
 
-    int ptr_a = buf[*index+1];
-    int ptr_b = buf[*index+2];
-    int target = buf[*index+3];
+    if (opcode > 0) {
+        opcode_mode->first_param = opcode % 10;
+        opcode /= 10;
+    }
 
-    if (ptr_a > max_size || ptr_b > max_size || target > max_size) {
-        printf("Pointer address is larger than the size of the program! (opcode_add())\n");
-        printf("\tptr_a: %i\n\tptr_b: %i\n\ttarget: %i\n\tmax_size: %li\n", ptr_a, ptr_b, target, max_size);
-        return STATUS_BAD;
-    };
+    if (opcode > 0) {
+        opcode_mode->second_param = opcode % 10;
+        opcode /= 10;
+    }
 
-    int operand_a = buf[ptr_a];
-    int operand_b = buf[ptr_b];
+    if (opcode > 0) {
+        opcode_mode->third_param = opcode % 10;
+        opcode /= 10;
+    }
 
-    int result = operand_a + operand_b;
-
-    // printf("OPCODE_ADD @%i: %i + %i = %i @ %i\n", *index, operand_a, operand_b, result, target);
-
-    buf[target] = result;
-
-    *index += 4;
+    LOG_DEBUG("Opcode parameters: Opcode: %d Param 1: %d Param 2: %d Param 3: %d",
+        opcode_mode->opcode,
+        opcode_mode->first_param,
+        opcode_mode->second_param,
+        opcode_mode->third_param);
 
     return STATUS_GOOD;
 }
 
-status_t opcode_mult(int *buf, int *index, size_t max_size) {
-    if (buf[*index] != OPCODE_MULT) {
-        printf("Incorrectly identified OPCODE_MULT!");
+status_t opcode_add(int *buf, int *int_pointer, size_t max_size) {
+    
+    // Decode opcode and parameter modes into opcode_mode
+    opcode_mode opcode_mode = {0};
+
+    if (decode_param_modes(&opcode_mode, buf[*int_pointer]) == STATUS_BAD) {
         return STATUS_BAD;
     }
 
-    int ptr_a = buf[*index+1];
-    int ptr_b = buf[*index+2];
-    int target = buf[*index+3];
+    LOG_DEBUG("opcode_mode: Opcode: %d Param 1: %d Param 2: %d Param 3: %d",
+        opcode_mode.opcode,
+        opcode_mode.first_param,
+        opcode_mode.second_param,
+        opcode_mode.third_param);
 
-    if (ptr_a > max_size || ptr_b > max_size || target > max_size) {
-        printf("Pointer address is larger than the size of the program! (opcode_add())\n");
-        printf("\tptr_a: %i\n\tptr_b: %i\n\ttarget: %i\n\tmax_size: %li\n", ptr_a, ptr_b, target, max_size);
+    // Test that the opcode is actually an add opcode
+    if (opcode_mode.opcode % 10 != OPCODE_ADD) {
+        LOG_ERROR("Incorrectly identified OPCODE_ADD!");
         return STATUS_BAD;
-    };
+    }
 
-    int operand_a = buf[ptr_a];
-    int operand_b = buf[ptr_b];
+    int operand_a = 0;
+    int operand_b = 0;
+
+    if (opcode_mode.first_param == POS_MODE) {
+        int ptr_a = buf[*int_pointer+1];
+        if (ptr_a > max_size) {
+            LOG_ERROR("Pointer address is larger than the size of the program!");
+            LOG_ERROR("\tptr_a: %i\n\tmax_size: %li\n", ptr_a, max_size);
+            return STATUS_BAD;
+        }
+        operand_a = buf[ptr_a];
+    } else {
+        operand_a = buf[*int_pointer+1]; // Immediate mode
+    }
+
+    if (opcode_mode.second_param == POS_MODE) {
+        int ptr_b = buf[*int_pointer+2];
+        if (ptr_b > max_size) {
+            LOG_ERROR("Pointer address is larger than the size of the program!");
+            LOG_ERROR("\tptr_b: %i\n\tmax_size: %li\n", ptr_b, max_size);
+            return STATUS_BAD;
+        }
+        operand_b = buf[ptr_b];
+    } else {
+        operand_b = buf[*int_pointer+2]; // Immediate mode
+    }
+
+    int target_ptr = buf[*int_pointer+3];
+
+    if (target_ptr > max_size) {
+        LOG_ERROR("Pointer address is larger than the size of the program!");
+        LOG_ERROR("\ttarget_ptr: %i\n\tmax_size: %li\n", target_ptr, max_size);
+        return STATUS_BAD;
+    }
+
+    int result = operand_a + operand_b;
+
+    LOG_DEBUG("OPCODE_ADD @%i: %i + %i = %i @ %i", *int_pointer, operand_a, operand_b, result, target_ptr);
+
+    buf[target_ptr] = result;
+
+    *int_pointer += 4;
+
+    return STATUS_GOOD;
+}
+
+status_t opcode_mult(int *buf, int *int_pointer, size_t max_size) {
+    
+    // Decode opcode and parameter modes into opcode_mode
+    opcode_mode opcode_mode = {0};
+
+    if (decode_param_modes(&opcode_mode, buf[*int_pointer]) == STATUS_BAD) {
+        return STATUS_BAD;
+    }
+
+    LOG_DEBUG("opcode_mode: Opcode: %d Param 1: %d Param 2: %d Param 3: %d",
+        opcode_mode.opcode,
+        opcode_mode.first_param,
+        opcode_mode.second_param,
+        opcode_mode.third_param);
+
+    // Test that the opcode is actually a mult opcode
+    if (opcode_mode.opcode % 10 != OPCODE_MULT) {
+        LOG_ERROR("Incorrectly identified OPCODE_MULT!");
+        return STATUS_BAD;
+    }
+
+    int operand_a = 0;
+    int operand_b = 0;
+
+    if (opcode_mode.first_param == POS_MODE) {
+        int ptr_a = buf[*int_pointer+1];
+        if (ptr_a > max_size) {
+            LOG_ERROR("Pointer address is larger than the size of the program!");
+            LOG_ERROR("\tptr_a: %i\n\tmax_size: %li\n", ptr_a, max_size);
+            return STATUS_BAD;
+        }
+        operand_a = buf[ptr_a];
+    } else {
+        operand_a = buf[*int_pointer+1]; // Immediate mode
+    }
+
+    if (opcode_mode.second_param == POS_MODE) {
+        int ptr_b = buf[*int_pointer+2];
+        if (ptr_b > max_size) {
+            LOG_ERROR("Pointer address is larger than the size of the program!");
+            LOG_ERROR("\tptr_b: %i\n\tmax_size: %li\n", ptr_b, max_size);
+            return STATUS_BAD;
+        }
+        operand_b = buf[ptr_b];
+    } else {
+        operand_b = buf[*int_pointer+2]; // Immediate mode
+    }
+
+    int target_ptr = buf[*int_pointer+3];
+
+    if (target_ptr > max_size) {
+        LOG_ERROR("Pointer address is larger than the size of the program!");
+        LOG_ERROR("\ttarget_ptr: %i\n\tmax_size: %li\n", target_ptr, max_size);
+        return STATUS_BAD;
+    }
 
     int result = operand_a * operand_b;
 
-    // printf("OPCODE_MULT @%i: %i * %i = %i @ %i\n", *index, operand_a, operand_b, result, target);
+    LOG_DEBUG("OPCODE_MULT @%i: %i * %i = %i @ %i", *int_pointer, operand_a, operand_b, result, target_ptr);
 
-    buf[target] = result;
+    buf[target_ptr] = result;
 
-    *index += 4;
+    *int_pointer += 4;
 
+    return STATUS_GOOD;
+}
+
+status_t opcode_inp(int *buf, int *int_pointer, size_t max_size) {
+    // Decode opcode and parameter modes into opcode_mode
+    opcode_mode opcode_mode = {0};
+
+    if (decode_param_modes(&opcode_mode, buf[*int_pointer]) == STATUS_BAD) {
+        return STATUS_BAD;
+    }
+
+    LOG_DEBUG("opcode_mode: Opcode: %d Param 1: %d Param 2: %d Param 3: %d",
+        opcode_mode.opcode,
+        opcode_mode.first_param,
+        opcode_mode.second_param,
+        opcode_mode.third_param);
+
+    // Test that the opcode is actually an inp opcode
+    if (opcode_mode.opcode % 10 != OPCODE_INP) {
+        LOG_ERROR("Incorrectly identified OPCODE_INP!");
+        return STATUS_BAD;
+    }
+
+    int target_ptr = buf[*int_pointer+1];
+    
+    if (target_ptr > max_size) {
+        LOG_ERROR("Pointer address is larger than the size of the program!");
+        LOG_ERROR("\ttarget_ptr: %i\n\tmax_size: %li\n", target_ptr, max_size);
+        return STATUS_BAD;
+    }
+
+    printf("Input an integer: ");
+    scanf("%d", &buf[target_ptr]);
+    *int_pointer += 2;
+    return STATUS_GOOD;
+}
+
+status_t opcode_outp(int *buf, int *int_pointer, size_t max_size) {
+    // Decode opcode and parameter modes into opcode_mode
+    opcode_mode opcode_mode = {0};
+
+    if (decode_param_modes(&opcode_mode, buf[*int_pointer]) == STATUS_BAD) {
+        return STATUS_BAD;
+    }
+
+    LOG_DEBUG("opcode_mode: Opcode: %d Param 1: %d Param 2: %d Param 3: %d",
+        opcode_mode.opcode,
+        opcode_mode.first_param,
+        opcode_mode.second_param,
+        opcode_mode.third_param);
+
+    // Test that the opcode is actually an outp opcode
+    if (opcode_mode.opcode % 10 != OPCODE_OUTP) {
+        LOG_ERROR("Incorrectly identified OPCODE_OUTP!");
+        return STATUS_BAD;
+    }
+
+    int target_ptr = buf[*int_pointer+1];
+
+    if (target_ptr > max_size) {
+        LOG_ERROR("Pointer address is larger than the size of the program!");
+        LOG_ERROR("\ttarget_ptr: %i\n\tmax_size: %li\n", target_ptr, max_size);
+        return STATUS_BAD;
+    }
+
+    LOG_INFO("Output: %i", buf[target_ptr]);
+    
+    *int_pointer += 2;
     return STATUS_GOOD;
 }
 
