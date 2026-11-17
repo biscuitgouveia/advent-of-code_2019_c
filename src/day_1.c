@@ -47,7 +47,7 @@ int day_1() {
 
         if (new_size > 1) {
             // clean everything up if resizing array fails
-            if (resize_dynamic_array(&data_buf, new_size) == STATUS_BAD) {
+            if (resize_dynamic_array((void **)&data_buf, new_size, sizeof(int)) == STATUS_BAD) {
                 free(data_buf);
                 data_buf = NULL;
                 free(lineptr);
