@@ -3,7 +3,7 @@
 #include <intcode.h>
 #include <logger.h>
 
-status_t decode_param_modes(opcode_mode *opcode_mode, int opcode) {
+status_t ic_params_decode(opcode_mode *opcode_mode, int opcode) {
     if (opcode <= 0) {
         printf("Invalid opcode: %i\n", opcode);
         return STATUS_BAD;
@@ -36,12 +36,12 @@ status_t decode_param_modes(opcode_mode *opcode_mode, int opcode) {
     return STATUS_GOOD;
 }
 
-status_t opcode_add(int *buf, int *int_pointer, size_t max_size) {
+status_t ic_opcode_add(int *buf, int *int_pointer, size_t max_size) {
     
     // Decode opcode and parameter modes into opcode_mode
     opcode_mode opcode_mode = {0};
 
-    if (decode_param_modes(&opcode_mode, buf[*int_pointer]) == STATUS_BAD) {
+    if (ic_params_decode(&opcode_mode, buf[*int_pointer]) == STATUS_BAD) {
         return STATUS_BAD;
     }
 
@@ -94,7 +94,7 @@ status_t opcode_add(int *buf, int *int_pointer, size_t max_size) {
 
     int result = operand_a + operand_b;
 
-    LOG_DEBUG("OPCODE_ADD @%i: %i + %i = %i @ %i", *int_pointer, operand_a, operand_b, result, target_ptr);
+    LOG_DEBUG("IC_OPCODE_ADD @%i: %i + %i = %i @ %i", *int_pointer, operand_a, operand_b, result, target_ptr);
 
     buf[target_ptr] = result;
 
@@ -103,12 +103,12 @@ status_t opcode_add(int *buf, int *int_pointer, size_t max_size) {
     return STATUS_GOOD;
 }
 
-status_t opcode_mult(int *buf, int *int_pointer, size_t max_size) {
+status_t ic_opcode_mult(int *buf, int *int_pointer, size_t max_size) {
     
     // Decode opcode and parameter modes into opcode_mode
     opcode_mode opcode_mode = {0};
 
-    if (decode_param_modes(&opcode_mode, buf[*int_pointer]) == STATUS_BAD) {
+    if (ic_params_decode(&opcode_mode, buf[*int_pointer]) == STATUS_BAD) {
         return STATUS_BAD;
     }
 
@@ -161,7 +161,7 @@ status_t opcode_mult(int *buf, int *int_pointer, size_t max_size) {
 
     int result = operand_a * operand_b;
 
-    LOG_DEBUG("OPCODE_MULT @%i: %i * %i = %i @ %i", *int_pointer, operand_a, operand_b, result, target_ptr);
+    LOG_DEBUG("IC_OPCODE_MULT @%i: %i * %i = %i @ %i", *int_pointer, operand_a, operand_b, result, target_ptr);
 
     buf[target_ptr] = result;
 
@@ -174,7 +174,7 @@ status_t opcode_inp(int *buf, int *int_pointer, size_t max_size) {
     // Decode opcode and parameter modes into opcode_mode
     opcode_mode opcode_mode = {0};
 
-    if (decode_param_modes(&opcode_mode, buf[*int_pointer]) == STATUS_BAD) {
+    if (ic_params_decode(&opcode_mode, buf[*int_pointer]) == STATUS_BAD) {
         return STATUS_BAD;
     }
 
@@ -208,7 +208,7 @@ status_t opcode_outp(int *buf, int *int_pointer, size_t max_size) {
     // Decode opcode and parameter modes into opcode_mode
     opcode_mode opcode_mode = {0};
 
-    if (decode_param_modes(&opcode_mode, buf[*int_pointer]) == STATUS_BAD) {
+    if (ic_params_decode(&opcode_mode, buf[*int_pointer]) == STATUS_BAD) {
         return STATUS_BAD;
     }
 
@@ -247,7 +247,7 @@ status_t opcode_outp(int *buf, int *int_pointer, size_t max_size) {
 //  - verb: Verb supplied for the second register of the program.
 //
 // returns: STATUS_GOOD on success, or STATUS_BAD on error.
-status_t run_code(int **data_buf, size_t data_buf_size, int noun, int verb) {
+status_t ic_program_run(int **data_buf, size_t data_buf_size, int noun, int verb) {
     int index = 0;
     int halt_sig = 0;
 
@@ -266,11 +266,11 @@ status_t run_code(int **data_buf, size_t data_buf_size, int noun, int verb) {
         }
 
         if ((*data_buf)[index] == OPCODE_ADD && data_buf_size-5 > index) {
-            if (opcode_add(*data_buf, &index, data_buf_size-1) == STATUS_BAD) {
+            if (ic_opcode_add(*data_buf, &index, data_buf_size-1) == STATUS_BAD) {
                 return STATUS_BAD;
             }
         } else if ((*data_buf)[index] == OPCODE_MULT && data_buf_size-5 > index) {
-            if (opcode_mult(*data_buf, &index, data_buf_size-1) == STATUS_BAD) {
+            if (ic_opcode_mult(*data_buf, &index, data_buf_size-1) == STATUS_BAD) {
                 return STATUS_BAD;
             }
         } else if (data_buf_size-5 < index) {
@@ -282,7 +282,7 @@ status_t run_code(int **data_buf, size_t data_buf_size, int noun, int verb) {
             return STATUS_BAD;
         }
     }
-    printf("How did we get to the end of run_code()?\n");
+    printf("How did we get to the end of ic_program_run()?\n");
     return STATUS_BAD;
 }
 
@@ -293,7 +293,7 @@ status_t run_code(int **data_buf, size_t data_buf_size, int noun, int verb) {
 //  - data_buf_size: A pointer to a variable counting the size of the buffer.
 //
 // returns: STATUS_GOOD on success, or STATUS_BAD on error.
-status_t reset_buffer(int **data_buf, size_t *data_buf_size) {
+status_t ic_buffer_reset(int **data_buf, size_t *data_buf_size) {
     free(*data_buf);
     *data_buf = NULL;
     
@@ -317,9 +317,9 @@ status_t reset_buffer(int **data_buf, size_t *data_buf_size) {
 //  - filepath: Path to the file containing the intcode program.
 //
 // returns: STATUS_GOOD on success, or STATUS_BAD on error.
-status_t reload_program(int **data_buf, size_t *data_buf_size, char *filepath) {
+status_t ic_program_reload(int **data_buf, size_t *data_buf_size, char *filepath) {
     
-    if (reset_buffer(data_buf, data_buf_size) == STATUS_BAD) {
+    if (ic_buffer_reset(data_buf, data_buf_size) == STATUS_BAD) {
         return STATUS_BAD;
     }
 
@@ -335,7 +335,7 @@ status_t reload_program(int **data_buf, size_t *data_buf_size, char *filepath) {
 
 int run_and_reset(int **data_buf, size_t *data_buf_size, int noun, int verb, char *filepath) {
     
-    if(run_code(data_buf, *data_buf_size, noun, verb) == STATUS_BAD) {
+    if(ic_program_run(data_buf, *data_buf_size, noun, verb) == STATUS_BAD) {
             free(*data_buf);
             *data_buf = NULL;
             return -1;
@@ -343,7 +343,7 @@ int run_and_reset(int **data_buf, size_t *data_buf_size, int noun, int verb, cha
 
         int output = *data_buf[0];
 
-        if (reload_program(data_buf, data_buf_size, filepath) == STATUS_BAD) {
+        if (ic_program_reload(data_buf, data_buf_size, filepath) == STATUS_BAD) {
             free(*data_buf);
             *data_buf = NULL;
             return -1;
@@ -361,7 +361,7 @@ int run_and_reset(int **data_buf, size_t *data_buf_size, int noun, int verb, cha
 //  - filepath: Path to the file containing the intcode program.
 //
 // returns: STATUS_GOOD on success, or STATUS_BAD on error.
-status_t run_for_target(int **data_buf, size_t *data_buf_size, intcode_input *input, char *filepath) {
+status_t ic_target_run(int **data_buf, size_t *data_buf_size, intcode_input *input, char *filepath) {
     int noun_left = input->min_noun;
     int noun_right = input->max_noun;
     

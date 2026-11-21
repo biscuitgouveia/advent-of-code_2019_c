@@ -1,6 +1,8 @@
 #include <ethan_utilities.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+#include <logger.h>
 
 status_t resize_dynamic_array(void **arr, size_t new_size, size_t element_size) {
     int *temp = reallocarray(*arr, new_size, element_size);
@@ -50,6 +52,7 @@ status_t ingest_comma_delim(int **buf, size_t *buf_size, char *filepath) {
                 return STATUS_BAD;
             }
         }
+        
         (*buf)[new_size-1] = temp;
     }
 
@@ -61,7 +64,7 @@ status_t ingest_comma_delim(int **buf, size_t *buf_size, char *filepath) {
     return STATUS_GOOD;
 }
 
-status_t ingest_comma_delim_char(char ***buf, size_t *buf_size, char *filepath) {
+status_t ingest_comma_delim_char(char ***buf, size_t *buf_size, int *num_of_lines, char *filepath) {
     // open file stream and check for errors
     FILE *fp = fopen(filepath, "r");
 
@@ -96,7 +99,21 @@ status_t ingest_comma_delim_char(char ***buf, size_t *buf_size, char *filepath) 
                 return STATUS_BAD;
             }
         }
-        (*buf)[new_size-1] = temp;
+
+        // Remove trailing comma if present
+        char *comma = strchr(temp, ',');
+        if (comma != NULL) {
+            *comma = '\0';
+        }
+
+        char *newline = strchr(temp, '\n');
+        if (newline) {
+            *num_of_lines += 1;
+            LOG_INFO("New line detected. Total lines: %d", *num_of_lines);
+        }
+
+        (*buf)[new_size-1] = strdup(temp);
+
         printf("%s\n", (*buf)[new_size-1]);
     }
 

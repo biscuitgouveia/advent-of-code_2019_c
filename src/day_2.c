@@ -28,7 +28,7 @@ int day_2() {
         return -1;
     }
 
-    if (run_code(&data_buf, data_buf_size, 12, 2) == STATUS_BAD) {
+    if (ic_program_run(&data_buf, data_buf_size, 12, 2) == STATUS_BAD) {
         printf("Something went wrong!\n");
         free(data_buf);
         data_buf = NULL;
@@ -37,7 +37,7 @@ int day_2() {
 
     int part_one = data_buf[0];
 
-    if (reload_program(&data_buf, &data_buf_size, INPUT_PATH) == STATUS_BAD) {
+    if (ic_program_reload(&data_buf, &data_buf_size, INPUT_PATH) == STATUS_BAD) {
         printf("Error reloading program.\n");
         free(data_buf);
         data_buf = NULL;
@@ -54,7 +54,7 @@ int day_2() {
         PART_TWO_TARGET,
     };
 
-    if (run_for_target(&data_buf, &data_buf_size, &part_two_params, INPUT_PATH) == STATUS_BAD) {
+    if (ic_target_run(&data_buf, &data_buf_size, &part_two_params, INPUT_PATH) == STATUS_BAD) {
         free(data_buf);
         data_buf = NULL;
         return -1;

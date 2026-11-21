@@ -2,7 +2,7 @@
 #include <time.h>
 
 // Set current log level (0=ERROR, 1=WARN, 2=INFO, 3=DEBUG)
-#define CURRENT_LOG_LEVEL 3
+#define CURRENT_LOG_LEVEL 2
 
 #define RESET   "\033[0m"
 #define BOLD    "\033[1m"
