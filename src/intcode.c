@@ -170,7 +170,7 @@ status_t ic_opcode_mult(int *buf, int *int_pointer, size_t max_size) {
     return STATUS_GOOD;
 }
 
-status_t opcode_inp(int *buf, int *int_pointer, size_t max_size) {
+status_t ic_opcode_inp(int *buf, int *int_pointer, size_t max_size) {
     // Decode opcode and parameter modes into opcode_mode
     opcode_mode opcode_mode = {0};
 
@@ -204,7 +204,7 @@ status_t opcode_inp(int *buf, int *int_pointer, size_t max_size) {
     return STATUS_GOOD;
 }
 
-status_t opcode_outp(int *buf, int *int_pointer, size_t max_size) {
+status_t ic_opcode_outp(int *buf, int *int_pointer, size_t max_size) {
     // Decode opcode and parameter modes into opcode_mode
     opcode_mode opcode_mode = {0};
 
@@ -256,33 +256,45 @@ status_t ic_program_run(int **data_buf, size_t data_buf_size, int noun, int verb
 
     while (!halt_sig) {
         if (index > data_buf_size-1) {
-            printf("Exceeded buffer!");
+            LOG_ERROR("Exceeded buffer!");
             return STATUS_BAD;
         }
 
-        if ((*data_buf)[index] == OPCODE_TERM) {
+        if ((*data_buf)[index] == OPCODE_TERM || (*data_buf)[index] % 20 == OPCODE_TERM) {
             // printf("TERMINATING @ %d!\n", index);
             return STATUS_GOOD;
         }
 
-        if ((*data_buf)[index] == OPCODE_ADD && data_buf_size-5 > index) {
+        if (((*data_buf)[index] == OPCODE_INP || (*data_buf)[index] % 10 == OPCODE_INP) && data_buf_size-2 > index) {
+            if (ic_opcode_inp(*data_buf, &index, data_buf_size-1) == STATUS_BAD) {
+                return STATUS_BAD;
+            }
+        }
+
+        if (((*data_buf)[index] == OPCODE_OUTP || (*data_buf)[index] % 10 == OPCODE_OUTP)  && data_buf_size-2 > index) {
+            if (ic_opcode_outp(*data_buf, &index, data_buf_size-1) == STATUS_BAD) {
+                return STATUS_BAD;
+            }
+        }
+
+        if (((*data_buf)[index] == OPCODE_ADD || (*data_buf)[index] % 10 == OPCODE_ADD) && data_buf_size-5 > index) {
             if (ic_opcode_add(*data_buf, &index, data_buf_size-1) == STATUS_BAD) {
                 return STATUS_BAD;
             }
-        } else if ((*data_buf)[index] == OPCODE_MULT && data_buf_size-5 > index) {
+        } else if (((*data_buf)[index] == OPCODE_MULT || (*data_buf)[index] % 10 == OPCODE_MULT) && data_buf_size-5 > index) {
             if (ic_opcode_mult(*data_buf, &index, data_buf_size-1) == STATUS_BAD) {
                 return STATUS_BAD;
             }
         } else if (data_buf_size-5 < index) {
-            printf("TERMINATING @ %d! Danger of overflow!\n", index);
-            printf("Data Buffer Size: %li\n", data_buf_size);
+            LOG_ERROR("TERMINATING @ %d! Danger of overflow!", index);
+            LOG_ERROR("Data Buffer Size: %li", data_buf_size);
             return STATUS_BAD;
         } else {
-            printf("UNKNOWN OPCODE %i @ %i!\n", (*data_buf)[index], index);
+            LOG_ERROR("UNKNOWN OPCODE %i @ %i!", (*data_buf)[index], index);
             return STATUS_BAD;
         }
     }
-    printf("How did we get to the end of ic_program_run()?\n");
+    LOG_ERROR("How did we get to the end of ic_program_run()?\n");
     return STATUS_BAD;
 }
 

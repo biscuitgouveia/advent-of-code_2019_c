@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
 #include <getopt.h>
 
 #include <ethan_utilities.h>
@@ -36,6 +35,8 @@ int main(int argc, char *argv[]) {
 			day_3();
 		case 4:
 			day_4();
+		case 5:
+			day_5();
         default:
             return -1;
     }
