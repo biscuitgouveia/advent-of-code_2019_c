@@ -34,6 +34,8 @@ int main(int argc, char *argv[]) {
             break;
 		case 3:
 			day_3();
+		case 4:
+			day_4();
         default:
             return -1;
     }
