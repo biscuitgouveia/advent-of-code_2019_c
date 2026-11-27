@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <intcode.h>
 #include <logger.h>
 
@@ -170,11 +171,11 @@ status_t ic_opcode_mult(int *buf, int *int_pointer, size_t max_size) {
     return STATUS_GOOD;
 }
 
-status_t ic_opcode_inp(int *buf, int *int_pointer, size_t max_size) {
+status_t ic_opcode_inp(int **buf, int *int_pointer, size_t max_size) {
     // Decode opcode and parameter modes into opcode_mode
     opcode_mode opcode_mode = {0};
 
-    if (ic_params_decode(&opcode_mode, buf[*int_pointer]) == STATUS_BAD) {
+    if (ic_params_decode(&opcode_mode, (*buf)[*int_pointer]) == STATUS_BAD) {
         return STATUS_BAD;
     }
 
@@ -190,25 +191,31 @@ status_t ic_opcode_inp(int *buf, int *int_pointer, size_t max_size) {
         return STATUS_BAD;
     }
 
-    int target_ptr = buf[*int_pointer+1];
+    int target_ptr = (*buf)[*int_pointer+1];
+    LOG_DEBUG("target_ptr: %d", target_ptr);
     
     if (target_ptr > max_size) {
         LOG_ERROR("Pointer address is larger than the size of the program!");
         LOG_ERROR("\ttarget_ptr: %i\n\tmax_size: %li\n", target_ptr, max_size);
         return STATUS_BAD;
     }
-
+    int result = 0;
     printf("Input an integer: ");
-    scanf("%d", &buf[target_ptr]);
+    scanf("%d", &result);
+    LOG_DEBUG("Writing to %d: %d.", target_ptr, result);
+
+    (*buf)[target_ptr] = result;
+    LOG_DEBUG("Written to %d: %d.", target_ptr, buf[target_ptr]);
+
     *int_pointer += 2;
     return STATUS_GOOD;
 }
 
-status_t ic_opcode_outp(int *buf, int *int_pointer, size_t max_size) {
+status_t ic_opcode_outp(int **buf, int *int_pointer, size_t max_size) {
     // Decode opcode and parameter modes into opcode_mode
     opcode_mode opcode_mode = {0};
 
-    if (ic_params_decode(&opcode_mode, buf[*int_pointer]) == STATUS_BAD) {
+    if (ic_params_decode(&opcode_mode, (*buf)[*int_pointer]) == STATUS_BAD) {
         return STATUS_BAD;
     }
 
@@ -224,17 +231,206 @@ status_t ic_opcode_outp(int *buf, int *int_pointer, size_t max_size) {
         return STATUS_BAD;
     }
 
-    int target_ptr = buf[*int_pointer+1];
+    // Override opcode_mode.first_param to 0
+    opcode_mode.first_param = 0;
+
+    int target_ptr = (*buf)[*int_pointer+1];
+
+    LOG_DEBUG("target_ptr: %d", target_ptr);
 
     if (target_ptr > max_size) {
         LOG_ERROR("Pointer address is larger than the size of the program!");
         LOG_ERROR("\ttarget_ptr: %i\n\tmax_size: %li\n", target_ptr, max_size);
         return STATUS_BAD;
     }
-
-    LOG_INFO("Output: %i", buf[target_ptr]);
+    int result = (*buf)[target_ptr];
+    LOG_INFO("OUTPUT: %d", result);
     
     *int_pointer += 2;
+    return STATUS_GOOD;
+}
+
+status_t ic_opcode_jump_if(int **buf, int *int_pointer, size_t max_size) {
+    // Decode opcode and parameter modes into opcode_mode
+    opcode_mode opcode_mode = {0};
+
+    if (ic_params_decode(&opcode_mode, (*buf)[*int_pointer]) == STATUS_BAD) {
+        return STATUS_BAD;
+    }
+
+    LOG_DEBUG("opcode_mode: Opcode: %d Param 1: %d Param 2: %d Param 3: %d",
+        opcode_mode.opcode,
+        opcode_mode.first_param,
+        opcode_mode.second_param,
+        opcode_mode.third_param);
+
+    // Test that the opcode is actually a JUMP opcode
+    if ((opcode_mode.opcode % 10 != OPCODE_JUMP_TRUE) || (opcode_mode.opcode % 10 != OPCODE_JUMP_FALSE)) {
+        LOG_ERROR("Incorrectly identified OPCODE_JUMP!");
+        return STATUS_BAD;
+    }
+
+    int operand_a = 0;
+    int operand_b = 0;
+
+    if (opcode_mode.first_param == POS_MODE) {
+        int ptr_a = (*buf)[*int_pointer+1];
+        if (ptr_a > max_size) {
+            LOG_ERROR("Pointer address is larger than the size of the program!");
+            LOG_ERROR("\tptr_a: %i\n\tmax_size: %li\n", ptr_a, max_size);
+            return STATUS_BAD;
+        }
+        operand_a = (*buf)[ptr_a];
+    } else {
+        operand_a = (*buf)[*int_pointer+1]; // Immediate mode
+    }
+
+    if (opcode_mode.second_param == POS_MODE) {
+        int ptr_b = (*buf)[*int_pointer+2];
+        if (ptr_b > max_size) {
+            LOG_ERROR("Pointer address is larger than the size of the program!");
+            LOG_ERROR("\tptr_b: %i\n\tmax_size: %li\n", ptr_b, max_size);
+            return STATUS_BAD;
+        }
+        operand_b = (*buf)[ptr_b];
+    } else {
+        operand_b = (*buf)[*int_pointer+2]; // Immediate mode
+    }
+
+    bool jump_mode = false;
+
+    if (opcode_mode.opcode % 10 == OPCODE_JUMP_TRUE) {
+        jump_mode = true;
+    }
+
+    if (operand_a == 0 && jump_mode == false) {
+        *int_pointer = operand_b;
+        return STATUS_GOOD;
+    }
+
+    if (operand_a != 0 && jump_mode == true) {
+        *int_pointer = operand_b;
+        return STATUS_GOOD;
+    }
+
+    return STATUS_GOOD;
+}
+
+status_t ic_opcode_compare(int **buf, int *int_pointer, size_t max_size) {
+    // Decode opcode and parameter modes into opcode_mode
+    opcode_mode opcode_mode = {0};
+
+    if (ic_params_decode(&opcode_mode, (*buf)[*int_pointer]) == STATUS_BAD) {
+        return STATUS_BAD;
+    }
+
+    LOG_DEBUG("opcode_mode: Opcode: %d Param 1: %d Param 2: %d Param 3: %d",
+        opcode_mode.opcode,
+        opcode_mode.first_param,
+        opcode_mode.second_param,
+        opcode_mode.third_param);
+
+    // Test that the opcode is actually a LESS_THAN opcode
+    if (opcode_mode.opcode % 10 != OPCODE_LESS_THAN) {
+        LOG_ERROR("Incorrectly identified OPCODE_LESS_THAN!");
+        return STATUS_BAD;
+    }
+
+    int operand_a = 0;
+    int operand_b = 0;
+    int target_ptr = (*buf)[*int_pointer+3];
+
+    if (opcode_mode.first_param == POS_MODE) {
+        int ptr_a = (*buf)[*int_pointer+1];
+        if (ptr_a > max_size) {
+            LOG_ERROR("Pointer address is larger than the size of the program!");
+            LOG_ERROR("\tptr_a: %i\n\tmax_size: %li\n", ptr_a, max_size);
+            return STATUS_BAD;
+        }
+        operand_a = (*buf)[ptr_a];
+    } else {
+        operand_a = (*buf)[*int_pointer+1]; // Immediate mode
+    }
+
+    if (opcode_mode.second_param == POS_MODE) {
+        int ptr_b = (*buf)[*int_pointer+2];
+        if (ptr_b > max_size) {
+            LOG_ERROR("Pointer address is larger than the size of the program!");
+            LOG_ERROR("\tptr_b: %i\n\tmax_size: %li\n", ptr_b, max_size);
+            return STATUS_BAD;
+        }
+        operand_b = (*buf)[ptr_b];
+    } else {
+        operand_b = (*buf)[*int_pointer+2]; // Immediate mode
+    }
+
+    if (operand_a < operand_b) {
+        (*buf)[target_ptr] = 1;
+    } else {
+        (*buf)[target_ptr] = 0;
+    }
+
+    *int_pointer += 4;
+
+    return STATUS_GOOD;
+}
+
+status_t ic_opcode_equal(int **buf, int *int_pointer, size_t max_size) {
+    // Decode opcode and parameter modes into opcode_mode
+    opcode_mode opcode_mode = {0};
+
+    if (ic_params_decode(&opcode_mode, (*buf)[*int_pointer]) == STATUS_BAD) {
+        return STATUS_BAD;
+    }
+
+    LOG_DEBUG("opcode_mode: Opcode: %d Param 1: %d Param 2: %d Param 3: %d",
+        opcode_mode.opcode,
+        opcode_mode.first_param,
+        opcode_mode.second_param,
+        opcode_mode.third_param);
+
+    // Test that the opcode is actually a EQUAL opcode
+    if (opcode_mode.opcode % 10 != OPCODE_EQUAL) {
+        LOG_ERROR("Incorrectly identified OPCODE_EQUAL!");
+        return STATUS_BAD;
+    }
+
+    int operand_a = 0;
+    int operand_b = 0;
+    int target_ptr = (*buf)[*int_pointer+3];
+
+    if (opcode_mode.first_param == POS_MODE) {
+        int ptr_a = (*buf)[*int_pointer+1];
+        if (ptr_a > max_size) {
+            LOG_ERROR("Pointer address is larger than the size of the program!");
+            LOG_ERROR("\tptr_a: %i\n\tmax_size: %li\n", ptr_a, max_size);
+            return STATUS_BAD;
+        }
+        operand_a = (*buf)[ptr_a];
+    } else {
+        operand_a = (*buf)[*int_pointer+1]; // Immediate mode
+    }
+
+    if (opcode_mode.second_param == POS_MODE) {
+        int ptr_b = (*buf)[*int_pointer+2];
+        if (ptr_b > max_size) {
+            LOG_ERROR("Pointer address is larger than the size of the program!");
+            LOG_ERROR("\tptr_b: %i\n\tmax_size: %li\n", ptr_b, max_size);
+            return STATUS_BAD;
+        }
+        operand_b = (*buf)[ptr_b];
+    } else {
+        operand_b = (*buf)[*int_pointer+2]; // Immediate mode
+    }
+
+    if (operand_a == operand_b) {
+        (*buf)[target_ptr] = 1;
+    } else {
+        (*buf)[target_ptr] = 0;
+    }
+
+    *int_pointer += 4;
+
     return STATUS_GOOD;
 }
 
@@ -250,7 +446,7 @@ status_t ic_opcode_outp(int *buf, int *int_pointer, size_t max_size) {
 status_t ic_program_run(int **data_buf, size_t data_buf_size, int noun, int verb) {
     int index = 0;
     int halt_sig = 0;
-
+    
     (*data_buf)[1] = noun;
     (*data_buf)[2] = verb;
 
@@ -259,30 +455,42 @@ status_t ic_program_run(int **data_buf, size_t data_buf_size, int noun, int verb
             LOG_ERROR("Exceeded buffer!");
             return STATUS_BAD;
         }
+        // for (int i = 0; i < data_buf_size; i++) {
+        //     LOG_DEBUG("%d", (*data_buf)[i]);
+        // }
+        LOG_DEBUG("OPCODE: %d, OPCODE %% 20: %d", (*data_buf)[index], (*data_buf)[index]%10);
 
-        if ((*data_buf)[index] == OPCODE_TERM || (*data_buf)[index] % 20 == OPCODE_TERM) {
+        LOG_DEBUG("OPCODE is MULT: %d, OPCODE %% 10 is MULT: %d", (*data_buf)[index] == OPCODE_MULT, (*data_buf)[index]%10 == OPCODE_MULT);
+
+        if ((*data_buf)[index] == OPCODE_TERM) {
             // printf("TERMINATING @ %d!\n", index);
             return STATUS_GOOD;
-        }
-
-        if (((*data_buf)[index] == OPCODE_INP || (*data_buf)[index] % 10 == OPCODE_INP) && data_buf_size-2 > index) {
-            if (ic_opcode_inp(*data_buf, &index, data_buf_size-1) == STATUS_BAD) {
+        } else if ((*data_buf)[index]%10 == OPCODE_INP && data_buf_size-2 >= index) {
+            if (ic_opcode_inp(data_buf, &index, data_buf_size-1) == STATUS_BAD) {
                 return STATUS_BAD;
             }
-        }
-
-        if (((*data_buf)[index] == OPCODE_OUTP || (*data_buf)[index] % 10 == OPCODE_OUTP)  && data_buf_size-2 > index) {
-            if (ic_opcode_outp(*data_buf, &index, data_buf_size-1) == STATUS_BAD) {
+        } else if ((*data_buf)[index]%10 == OPCODE_OUTP  && data_buf_size-2 >= index) {
+            if (ic_opcode_outp(data_buf, &index, data_buf_size-1) == STATUS_BAD) {
                 return STATUS_BAD;
             }
-        }
-
-        if (((*data_buf)[index] == OPCODE_ADD || (*data_buf)[index] % 10 == OPCODE_ADD) && data_buf_size-5 > index) {
+        } else if ((*data_buf)[index]%10 == OPCODE_ADD && data_buf_size-5 >= index) {
             if (ic_opcode_add(*data_buf, &index, data_buf_size-1) == STATUS_BAD) {
                 return STATUS_BAD;
             }
-        } else if (((*data_buf)[index] == OPCODE_MULT || (*data_buf)[index] % 10 == OPCODE_MULT) && data_buf_size-5 > index) {
+        } else if ((*data_buf)[index]%10 == OPCODE_MULT && data_buf_size-5 >= index) {
             if (ic_opcode_mult(*data_buf, &index, data_buf_size-1) == STATUS_BAD) {
+                return STATUS_BAD;
+            }
+        } else if (((*data_buf)[index]%10 == OPCODE_JUMP_TRUE || (*data_buf)[index]%10 == OPCODE_JUMP_FALSE) && data_buf_size-2 >= index) {
+            if (ic_opcode_jump_if(data_buf, &index, data_buf_size-1) == STATUS_BAD) {
+                return STATUS_BAD;
+            }
+        } else if ((*data_buf)[index]%10 == OPCODE_LESS_THAN && data_buf_size-5 >= index) {
+            if (ic_opcode_compare(data_buf, &index, data_buf_size) == STATUS_BAD) {
+                return STATUS_BAD;
+            }
+        } else if ((*data_buf)[index]%10 == OPCODE_EQUAL && data_buf_size-5 >= index) {
+            if (ic_opcode_equal(data_buf, &index, data_buf_size) == STATUS_BAD) {
                 return STATUS_BAD;
             }
         } else if (data_buf_size-5 < index) {
