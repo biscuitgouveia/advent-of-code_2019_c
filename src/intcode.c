@@ -265,7 +265,7 @@ status_t ic_opcode_jump_if(int **buf, int *int_pointer, size_t max_size) {
         opcode_mode.third_param);
 
     // Test that the opcode is actually a JUMP opcode
-    if ((opcode_mode.opcode % 10 != OPCODE_JUMP_TRUE) || (opcode_mode.opcode % 10 != OPCODE_JUMP_FALSE)) {
+    if ((opcode_mode.opcode % 10 != OPCODE_JUMP_TRUE) && (opcode_mode.opcode % 10 != OPCODE_JUMP_FALSE)) {
         LOG_ERROR("Incorrectly identified OPCODE_JUMP!");
         return STATUS_BAD;
     }
@@ -306,10 +306,14 @@ status_t ic_opcode_jump_if(int **buf, int *int_pointer, size_t max_size) {
     if (operand_a == 0 && jump_mode == false) {
         *int_pointer = operand_b;
         return STATUS_GOOD;
-    }
-
-    if (operand_a != 0 && jump_mode == true) {
+    } else if (operand_a != 0 && jump_mode == false) {
+        *int_pointer += 3;
+        return STATUS_GOOD;
+    } else if (operand_a != 0 && jump_mode == true) {
         *int_pointer = operand_b;
+        return STATUS_GOOD;
+    } else if (operand_a == 0 && jump_mode == true) {
+        *int_pointer += 3;
         return STATUS_GOOD;
     }
 
